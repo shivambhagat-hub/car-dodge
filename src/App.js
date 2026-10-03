@@ -1,6 +1,6 @@
+/* eslint-disable */
 import React, { useState, useEffect, useRef } from 'react';
-/* eslint-disable no-loop-func */
-import React, { useState, useEffect, useRef } from 'react';
+
 export default function App() {
   const [playerX, setPlayerX] = useState(50);
   const [enemies, setEnemies] = useState([]);
@@ -8,7 +8,7 @@ export default function App() {
   const [best, setBest] = useState(() => Number(localStorage.getItem('best') || 0));
   const [gameState, setGameState] = useState('start');
   const [isDragging, setIsDragging] = useState(false);
-  const [modal, setModal] = useState(null); // about, privacy, contact, terms
+  const [modal, setModal] = useState(null);
   const gameRef = useRef(null);
   const loopRef = useRef();
 
@@ -39,7 +39,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', keyHandler);
   }, [gameState]);
 
-  // GAME LOGIC - NOT TOUCHED, WORKING FINE
   useEffect(() => {
     if (gameState!== 'playing') return;
     let frame = 0;
@@ -48,7 +47,7 @@ export default function App() {
       setEnemies(prev => {
         let next = prev.map(en => ({...en, y: en.y + 0.5 + score * 0.0003 })).filter(en => en.y < 115);
         const canSpawn = next.every(en => en.y > 22);
-                if (canSpawn && Math.random() < 0.02) {
+        if (canSpawn && Math.random() < 0.02) {
           let newX = 15 + Math.random() * 70;
           let attempts = 0;
           let hasCollision = true;
@@ -103,7 +102,6 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a1e3f', color: 'white', fontFamily: 'Arial' }}>
-      {/* HEADER WITH CLICK */}
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', background: '#06102a', fontSize: '12px' }}>
         <b>FUNBIT GAMES</b>
         <div style={{ display: 'flex', gap: '14px', cursor: 'pointer' }}>
@@ -153,7 +151,6 @@ export default function App() {
         <p style={{ fontSize: '11px', color: '#9ab' }}>© 2026 Funbit Games Studio, Chakan, Pune, Maharashtra, India - 411501</p>
       </div>
 
-      {/* POPUPS */}
       {modal === 'about' && <Modal title="About FunBit Games Studio">
         <p>Welcome to FunBit Games Studio! We are an independent game development studio based in Chakan, Pune, Maharashtra, India.</p>
         <b>Our Story</b><br/>Founded by a small team of passionate gamers and developers from Maharashtra, our mission is to create fun, lightweight, and addictive games that anyone can play instantly without downloading heavy apps.<br/><br/>
@@ -164,7 +161,7 @@ export default function App() {
       {modal === 'privacy' && <Modal title="Privacy Policy - Last updated October 3, 2026">
         At FunBit Games Studio, we take your privacy seriously.<br/><br/>
         <b>1. Information We Collect</b><br/>We do NOT collect personal information like name, email, phone directly. We use localStorage to save your high score on your device only.<br/><br/>
-        <b>2. Cookies & Ads</b><br/><br/>
+        <b>2. Cookies & Ads</b><br/>We may show ads in future.<br/><br/>
         <b>3. Third Party Services</b><br/>Our game is hosted on Vercel. Vercel may collect anonymous log data like IP, browser for security and performance.<br/><br/>
         <b>4. Children's Privacy</b><br/>Our games are safe for all ages, no violent or adult content. We do not knowingly collect data from children under 13.<br/><br/>
         <b>5. Contact</b><br/>If you have any privacy questions, contact us at funbitgames.studio@gmail.com. Address: Chakan, Pune, Maharashtra, India.
@@ -185,7 +182,6 @@ export default function App() {
         <b>3. Limitation</b><br/>We are not liable for any damages from playing game.<br/><br/>
         Last updated: Oct 3, 2026
       </Modal>}
-
     </div>
   );
 }
