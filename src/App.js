@@ -47,17 +47,29 @@ export default function App() {
       setEnemies(prev => {
         let next = prev.map(en => ({...en, y: en.y + 0.5 + score * 0.0003 })).filter(en => en.y < 115);
         const canSpawn = next.every(en => en.y > 22);
-        if (canSpawn && Math.random() < 0.02) {
-          let newX; let attempts = 0;
-          do {
+                if (canSpawn && Math.random() < 0.02) {
+          let newX = 15 + Math.random() * 70;
+          let attempts = 0;
+          let hasCollision = true;
+          while (hasCollision && attempts < 10) {
             newX = 15 + Math.random() * 70;
             attempts++;
-          } while (next.some(en => en.y < 35 && Math.abs(en.x - newX) < 18) && attempts < 10);
+            hasCollision = false;
+            for (let k = 0; k < next.length; k++) {
+              const en = next[k];
+              if (en.y < 35 && Math.abs(en.x - newX) < 18) {
+                hasCollision = true;
+                break;
+              }
+            }
+            if (next.length === 0) hasCollision = false;
+          }
           if (attempts < 10) {
             next.push({ id: Date.now()+Math.random(), x: newX, y: -12, color: ['#FF3B30','#FF9500','#FFCC00','#5856D6'][Math.floor(Math.random()*4)] });
           }
         }
-        for (let en of next) {
+        for (let i = 0; i < next.length; i++) {
+          const en = next[i];
           if (en.y > 75 && en.y < 90 && Math.abs(en.x - playerX) < 10) {
             setGameState('over');
             if (score > best) { setBest(score); localStorage.setItem('best', score); }
