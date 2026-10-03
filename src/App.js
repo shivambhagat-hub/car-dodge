@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-
+/* eslint-disable no-loop-func */
+import React, { useState, useEffect, useRef } from 'react';
 export default function App() {
   const [playerX, setPlayerX] = useState(50);
   const [enemies, setEnemies] = useState([]);
