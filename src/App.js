@@ -22,6 +22,23 @@ export default function App() {
     isMobileRef.current = window.innerWidth < 900 || /Android|iPhone/i.test(navigator.userAgent);
   }, []);
 
+  // Load AdSense script once
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1868225195209205";
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    document.head.appendChild(script);
+
+    // Push ads after load
+    const timer = setTimeout(() => {
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch(e){}
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const startGame = () => {
     setEnemies([]); setScore(0); setPlayerX(50); playerXRef.current = 50;
     setGameState('playing'); gameStateRef.current = 'playing';
@@ -62,37 +79,21 @@ export default function App() {
         return;
       }
       if (gameStateRef.current!== 'playing') return;
-      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        e.preventDefault(); moveLeft();
-      }
-      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        e.preventDefault(); moveRight();
-      }
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { e.preventDefault(); moveLeft(); }
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { e.preventDefault(); moveRight(); }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [modal]);
 
-  // DRAG FIXED - Allow scroll when NOT playing
   useEffect(() => {
     if (modal) { isDraggingRef.current = false; return; }
     const el = gameRef.current;
     if (!el) return;
-    // Only block scroll when actually playing
     const isPlayingNow = () => gameStateRef.current === 'playing' &&!modal;
-
-    const down = (e) => {
-      if (!isPlayingNow()) return;
-      isDraggingRef.current = true;
-      handleMove(e.touches? e.touches[0].clientX : e.clientX);
-    };
-    const move = (e) => {
-      if (!isDraggingRef.current ||!isPlayingNow()) return;
-      if (e.cancelable) e.preventDefault();
-      handleMove(e.touches? e.touches[0].clientX : e.clientX);
-    };
+    const down = (e) => { if (!isPlayingNow()) return; isDraggingRef.current = true; handleMove(e.touches? e.touches[0].clientX : e.clientX); };
+    const move = (e) => { if (!isDraggingRef.current ||!isPlayingNow()) return; if (e.cancelable) e.preventDefault(); handleMove(e.touches? e.touches[0].clientX : e.clientX); };
     const up = () => { isDraggingRef.current = false; };
-
     el.addEventListener('mousedown', down);
     el.addEventListener('touchstart', down, { passive: false });
     window.addEventListener('mousemove', move, { passive: false });
@@ -122,9 +123,7 @@ export default function App() {
         if (next.every(en => en.y > 28) && Math.random() < spawnRate) {
           let newX = 15 + Math.random() * 70;
           let tries = 0;
-          while (tries < 12 && next.some(en => en.y < 42 && Math.abs(en.x - newX) < 19)) {
-            newX = 15 + Math.random() * 70; tries++;
-          }
+          while (tries < 12 && next.some(en => en.y < 42 && Math.abs(en.x - newX) < 19)) { newX = 15 + Math.random() * 70; tries++; }
           if (tries < 12) next.push({ id: Date.now()+Math.random(), x: newX, y: -12, color: ['#FF3B30','#FF9500','#FFCC00','#5856D6'][Math.floor(Math.random()*4)] });
         }
         for (let en of next) {
@@ -153,8 +152,8 @@ export default function App() {
 
   const Modal = ({ title, children }) => (
     <div onClick={closeModal} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: '#0e2a5a', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: '20px', position: 'relative', border: '1px solid #2a5db0', pointerEvents: 'auto' }}>
-        <button onClick={closeModal} onMouseDown={(e)=>e.stopPropagation()} onTouchStart={(e)=>e.stopPropagation()} style={{ position: 'absolute', top: '10px', right: '12px', background: '#ff3b30', border: 'none', color: 'white', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100000, pointerEvents: 'auto' }}>X</button>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#0e2a5a', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: '20px', position: 'relative', border: '1px solid #2a5db0' }}>
+        <button onClick={closeModal} style={{ position: 'absolute', top: '10px', right: '12px', background: '#ff3b30', border: 'none', color: 'white', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', fontWeight: 'bold', zIndex: 100000 }}>X</button>
         <h3 style={{ color: '#00E5FF', marginBottom: '12px' }}>{title}</h3>
         <div style={{ fontSize: '12px', lineHeight: '1.7', color: '#cfe2ff' }}>{children}</div>
         <button onClick={closeModal} style={{ marginTop: '15px', padding: '10px 18px', background: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Close</button>
@@ -165,17 +164,13 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a1e3f', color: 'white', fontFamily: 'Arial', overflowX: 'hidden' }}>
       <style>{`
-    .side-ad{ width:160px; min-height:500px; background:#ffffff18; border:1px dashed #4aa8ff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; }
-    .bottom-ad-wrap{ width:100%; display:flex; justify-content:center; margin-top:12px; }
-    .bottom-ad{ width:300px; height:64px; background:#ffffff15; border:1px dashed #4aa8ff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; }
-    .game-box{ touch-action: pan-y; }
-    .game-box.playing{ touch-action: none; }
-        @media (max-width: 900px){
-         .side-ad{ display:none!important; }
-         .game-box{ width:92vw!important; max-width:360px!important; height:62vh!important; }
-         .bottom-ad-wrap{ width:92vw!important; max-width:360px!important; margin:12px auto 0 auto; }
-         .bottom-ad{ width:100%!important; }
-        }
+       .ad-side{ width:160px; height:600px; background:#06102a; border:1px solid #1e3a6a; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow:hidden; padding-top:4px; }
+       .ad-label{ font-size:9px; color:#6a8ab5; letter-spacing:1px; margin-bottom:4px; }
+       .bottom-ad-wrap{ width:100%; display:flex; justify-content:center; margin-top:14px; }
+       .bottom-ad{ width:320px; height:100px; background:#06102a; border:1px solid #1e3a6a; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; overflow:hidden; padding-top:4px; }
+       .game-box{ touch-action: pan-y; }
+       .game-box.playing{ touch-action: none; }
+        @media (max-width: 900px){.ad-side{ display:none!important; }.game-box{ width:92vw!important; max-width:360px!important; height:62vh!important; }.bottom-ad-wrap{ width:92vw!important; max-width:360px!important; margin:14px auto 0 auto; }.bottom-ad{ width:100%!important; max-width:320px; } }
       `}</style>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', background: '#06102a', fontSize: '12px' }}>
@@ -186,10 +181,21 @@ export default function App() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '12px', flexWrap: 'wrap' }}>
-        <div className="side-ad">ADVERTISEMENT</div>
+
+        {/* LEFT AD - 160x600 */}
+        <div className="ad-side">
+          <span className="ad-label">ADVERTISEMENT</span>
+          <ins className="adsbygoogle"
+            style={{display:"block", width:"160px", height:"600px"}}
+            data-ad-client="ca-pub-1868225195209205"
+            data-ad-slot="1234567890"
+            data-ad-format="auto"
+            data-full-width-responsive="false"></ins>
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px', width: '300px', maxWidth: '92vw' }}><span>Score: {Math.floor(score)}</span><span>Best: {best}</span></div>
-          <div ref={gameRef} className={`game-box ${gameState==='playing'?'playing':''}`} style={{ position: 'relative', width: '300px', height: '480px', background: '#070711', borderRadius: '16px', border: '2px solid #223', overflow: 'hidden', outline: 'none' }}>
+          <div ref={gameRef} className={`game-box ${gameState==='playing'?'playing':''}`} style={{ position: 'relative', width: '300px', height: '480px', background: '#070711', borderRadius: '16px', border: '2px solid #223', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', left: '50%', top: 0, width: '2px', height: '100%', background: 'repeating-linear-gradient(to bottom, #fff 0 14px, transparent 14px 28px)', transform: 'translateX(-50%)', opacity: 0.35, zIndex: 1 }} />
             {gameState!== 'start' && enemies.map(en => <Car key={en.id} x={en.x} y={en.y} color={en.color} />)}
             {gameState!== 'start' && <Car x={playerX} y={85} color="#00D9FF" isPlayer />}
@@ -210,9 +216,32 @@ export default function App() {
             <button onClick={moveLeft} style={{ padding: '9px 18px', borderRadius: '10px', border: 'none', background: '#ffffff22', color: 'white', cursor: 'pointer' }}>← LEFT (A)</button>
             <button onClick={moveRight} style={{ padding: '9px 18px', borderRadius: '10px', border: 'none', background: '#ffffff22', color: 'white', cursor: 'pointer' }}>RIGHT → (D)</button>
           </div>
-          <div className="bottom-ad-wrap"><div className="bottom-ad">ADVERTISEMENT</div></div>
+
+          {/* BOTTOM AD - 320x100 */}
+          <div className="bottom-ad-wrap">
+            <div className="bottom-ad">
+              <span className="ad-label">ADVERTISEMENT</span>
+              <ins className="adsbygoogle"
+                style={{display:"block", width:"320px", height:"100px"}}
+                data-ad-client="ca-pub-1868225195209205"
+                data-ad-slot="1234567891"
+                data-ad-format="auto"
+                data-full-width-responsive="true"></ins>
+            </div>
+          </div>
         </div>
-        <div className="side-ad">ADVERTISEMENT</div>
+
+        {/* RIGHT AD - YOUR EXACT CODE */}
+        <div className="ad-side">
+          <span className="ad-label">ADVERTISEMENT</span>
+          <ins className="adsbygoogle"
+            style={{display:"block", width:"160px", height:"600px"}}
+            data-ad-client="ca-pub-1868225195209205"
+            data-ad-slot="1234567892"
+            data-ad-format="auto"
+            data-full-width-responsive="false"></ins>
+        </div>
+
       </div>
 
       <div style={{ background: '#06102a', padding: '18px', textAlign: 'center' }}>
