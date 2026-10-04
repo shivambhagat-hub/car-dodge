@@ -207,10 +207,37 @@ export default function App() {
         <p style={{ fontSize: '11px', color: '#9ab' }}>© 2026 Funbit Games Studio, Chakan, Pune - 411501</p>
       </div>
 
-      {modal === 'about' && <Modal title="About FunBit Games Studio"><p>Welcome to FunBit Games Studio! Based in Chakan, Pune. We make lightweight instant games that work on all devices. No download required.<br/><br/>© 2026 FunBit Games Studio.</p></Modal>}
-      {modal === 'privacy' && <Modal title="Privacy Policy"><p>We do NOT collect personal info. localStorage for best score only. Hosted on Vercel. Contact: funbitgames.studio@gmail.com</p></Modal>}
-      {modal === 'contact' && <Modal title="Contact Us"><p>Email: funbitgames.studio@gmail.com<br/>Chakan, Pune, Maharashtra - 410501</p></Modal>}
-      {modal === 'terms' && <Modal title="Terms"><p>Free to play, as-is for entertainment. Owned by FunBit Games Studio.</p></Modal>}
+      {modal === 'about' && <Modal title="About FunBit Games Studio">
+        <p>Welcome to FunBit Games Studio! We are an independent game development studio based in Chakan, Pune, Maharashtra, India.</p>
+        <b>Our Story</b><br/>Founded by a small team of passionate gamers and developers from Maharashtra, our mission is to create fun, lightweight, and addictive games that anyone can play instantly without downloading heavy apps.<br/><br/>
+        <b>Our Mission</b><br/>We believe gaming should be accessible to everyone. Our games are lightweight, fast, and work on all devices.<br/><br/>
+        <b>Why FunBit?</b><br/>No download required, instant play, optimized for mobile and PC.<br/><br/>© 2026 FunBit Games Studio.
+      </Modal>}
+
+      {modal === 'privacy' && <Modal title="Privacy Policy - Last updated October 3, 2026">
+        At FunBit Games Studio, we take your privacy seriously.<br/><br/>
+        <b>1. Information We Collect</b><br/>We do NOT collect personal information like name, email, phone directly. We use localStorage to save your high score on your device only.<br/><br/>
+        <b>2. Cookies & Ads</b><br/>We may show ads in future.<br/><br/>
+        <b>3. Third Party Services</b><br/>Our game is hosted on Vercel. Vercel may collect anonymous log data like IP, browser for security and performance.<br/><br/>
+        <b>4. Children's Privacy</b><br/>Our games are safe for all ages, no violent or adult content. We do not knowingly collect data from children under 13.<br/><br/>
+        <b>5. Contact</b><br/>If you have any privacy questions, contact us at funbitgames.studio@gmail.com. Address: Chakan, Pune, Maharashtra, India.
+      </Modal>}
+
+      {modal === 'contact' && <Modal title="Contact Us">
+        Have feedback, bug report, or business inquiry? We would love to hear from you!<br/><br/>
+        <b>Email:</b> funbitgames.studio@gmail.com<br/>
+        <b>Studio Name:</b> FunBit Games Studio<br/>
+        <b>Location:</b> Chakan, Shikrapur Road, Pune, Maharashtra, India - 410501<br/><br/>
+        We usually reply within 24 hours!
+      </Modal>}
+
+      {modal === 'terms' && <Modal title="Terms and Conditions">
+        By playing Car Dodge on dodge-car-gamesworld.app, you agree to these terms.<br/><br/>
+        <b>1. Use</b><br/>Game is provided as is for entertainment only, free to play, no warranty.<br/><br/>
+        <b>2. Intellectual Property</b><br/>Car Dodge and FunBit Games logo are owned by FunBit Games Studio. You may not copy or resell.<br/><br/>
+        <b>3. Limitation</b><br/>We are not liable for any damages from playing game.<br/><br/>
+        Last updated: Oct 3, 2026
+      </Modal>}
     </div>
   );
 }
