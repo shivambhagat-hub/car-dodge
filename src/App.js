@@ -12,55 +12,43 @@ export default function App() {
   const gameRef = useRef(null);
   const loopRef = useRef();
   const playerXRef = useRef(50);
-  const playerCarRef = useRef(null);
   const isDraggingRef = useRef(false);
+  const isMobileRef = useRef(false);
 
-  useEffect(() => { playerXRef.current = playerX; }, [playerX]);
+  useEffect(() => {
+    playerXRef.current = playerX;
+  }, [playerX]);
+
+  useEffect(() => {
+    // Detect mobile for speed tuning
+    isMobileRef.current = window.innerWidth < 900 || /Android|iPhone/i.test(navigator.userAgent);
+  }, []);
 
   const startGame = () => {
     setEnemies([]); setScore(0); setPlayerX(50); playerXRef.current = 50; setGameState('playing');
   };
 
-  // INSTANT drag - direct DOM, no lag
   const handleMove = (clientX) => {
     if (!gameRef.current || gameState!== 'playing') return;
     const rect = gameRef.current.getBoundingClientRect();
     let x = ((clientX - rect.left) / rect.width) * 100;
     x = Math.max(10, Math.min(90, x));
     playerXRef.current = x;
-
-    // Direct move - car follows finger instantly
-    if (playerCarRef.current) {
-      playerCarRef.current.style.left = `${x}%`;
-    }
-    // Update state less frequently for collision
     setPlayerX(x);
   };
 
   useEffect(() => {
     const el = gameRef.current;
     if (!el) return;
-
-    const down = (e) => {
-      isDraggingRef.current = true;
-      const cx = e.touches? e.touches[0].clientX : e.clientX;
-      handleMove(cx);
-    };
-    const move = (e) => {
-      if (!isDraggingRef.current) return;
-      if (e.cancelable) e.preventDefault();
-      const cx = e.touches? e.touches[0].clientX : e.clientX;
-      handleMove(cx);
-    };
+    const down = (e) => { isDraggingRef.current = true; handleMove(e.touches? e.touches[0].clientX : e.clientX); };
+    const move = (e) => { if (!isDraggingRef.current) return; if (e.cancelable) e.preventDefault(); handleMove(e.touches? e.touches[0].clientX : e.clientX); };
     const up = () => { isDraggingRef.current = false; };
-
     el.addEventListener('mousedown', down);
     el.addEventListener('touchstart', down, { passive: false });
     window.addEventListener('mousemove', move, { passive: false });
     window.addEventListener('touchmove', move, { passive: false });
     window.addEventListener('mouseup', up);
     window.addEventListener('touchend', up);
-
     return () => {
       el.removeEventListener('mousedown', down);
       el.removeEventListener('touchstart', down);
@@ -77,15 +65,23 @@ export default function App() {
     const loop = () => {
       frame++;
       setEnemies(prev => {
-        let next = prev.map(en => ({...en, y: en.y + 0.6 + score * 0.001 })).filter(en => en.y < 110);
-        if (next.every(en => en.y > 26) && Math.random() < 0.028) {
+        // SPEED FIX: PC slower at start
+        const baseSpeed = isMobileRef.current? 0.55 : 0.32; // mobile perfect, PC slower
+        const speedInc = isMobileRef.current? 0.0009 : 0.0005;
+        let next = prev.map(en => ({...en, y: en.y + baseSpeed + score * speedInc })).filter(en => en.y < 112);
+
+        const spawnRate = isMobileRef.current? 0.028 : 0.018; // PC spawns less at start
+        const canSpawn = next.every(en => en.y > 26);
+        if (canSpawn && Math.random() < spawnRate) {
           let newX = 15 + Math.random() * 70;
           let tries = 0;
-          while (tries < 12 && next.some(en => en.y < 40 && Math.abs(en.x - newX) < 20)) {
+          while (tries < 12 && next.some(en => en.y < 40 && Math.abs(en.x - newX) < 19)) {
             newX = 15 + Math.random() * 70;
             tries++;
           }
-          next.push({ id: Date.now() + Math.random(), x: newX, y: -10, color: ['#FF3B30', '#FF9500', '#FFCC00', '#5856D6'][Math.floor(Math.random() * 4)] });
+          if (tries < 12) {
+            next.push({ id: Date.now() + Math.random(), x: newX, y: -12, color: ['#FF3B30', '#FF9500', '#FFCC00', '#5856D6'][Math.floor(Math.random() * 4)] });
+          }
         }
         for (let en of next) {
           if (en.y > 74 && en.y < 89 && Math.abs(en.x - playerXRef.current) < 11) {
@@ -96,20 +92,15 @@ export default function App() {
         }
         return next;
       });
-      if (frame % 8 === 0) setScore(s => s + 1);
+      if (frame % 9 === 0) setScore(s => s + 1);
       loopRef.current = requestAnimationFrame(loop);
     };
     loopRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(loopRef.current);
   }, [gameState, score, best]);
 
-  const Car = ({ x, y, color, isPlayer, carRefProp }) => (
-    <div ref={carRefProp} style={{
-      position: 'absolute', left: `${x}%`, top: `${y}%`,
-      transform: 'translate(-50%,-50%)', width: '28px', height: '52px',
-      background: color, borderRadius: '6px', zIndex: isPlayer? 20 : 5,
-      boxShadow: '0 3px 0 rgba(0,0,0,0.4)'
-    }}>
+  const Car = ({ x, y, color, isPlayer }) => (
+    <div style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%,-50%)', width: '28px', height: '52px', background: color, borderRadius: '6px', zIndex: isPlayer? 20 : 5 }}>
       <div style={{ position: 'absolute', top: '6px', left: '3px', right: '3px', height: '10px', background: '#111', borderRadius: '2px' }} />
     </div>
   );
@@ -127,54 +118,43 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a1e3f', color: 'white', fontFamily: 'Arial', overflowX: 'hidden' }}>
       <style>{`
-        *{ -webkit-tap-highlight-color: rgba(0,0,0,0)!important; -webkit-touch-callout: none!important; }
-        html, body { overscroll-behavior: none; }
-       .game-box,.game-box * { user-select: none; -webkit-user-select: none; touch-action: none; }
-        /* PC - side ads */
-       .side-ad { width: 160px; min-height: 500px; background: #ffffff18; border: 1px dashed #4aa8ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
-       .bottom-ad { width: 300px; height: 64px; background: #ffffff15; border: 1px dashed #4aa8ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; margin: 10px auto 0 auto; }
+        *{ -webkit-tap-highlight-color: transparent; }
+      .side-ad{ width:160px; min-height:500px; background:#ffffff18; border:1px dashed #4aa8ff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; }
+      .bottom-ad-wrap{ width:100%; display:flex; justify-content:center; align-items:center; margin-top:12px; }
+      .bottom-ad{ width:300px; height:64px; background:#ffffff15; border:1px dashed #4aa8ff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; }
         @media (max-width: 900px){
-         .side-ad { display: none!important; }
-         .game-box { width: 92vw!important; max-width: 360px!important; height: 62vh!important; margin: 0 auto; }
-         .bottom-ad { width: 92vw!important; max-width: 360px!important; margin: 10px auto 0 auto; }
-         .center-wrap { width: 100%!important; display: flex; flex-direction: column; align-items: center; }
+        .side-ad{ display:none!important; }
+        .game-box{ width:92vw!important; max-width:360px!important; height:62vh!important; }
+        .bottom-ad-wrap{ width:92vw!important; max-width:360px!important; margin:12px auto 0 auto; }
+        .bottom-ad{ width:100%!important; }
         }
       `}</style>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', background: '#06102a', fontSize: '12px' }}>
         <b>FUNBIT GAMES</b>
         <div style={{ display: 'flex', gap: '14px', cursor: 'pointer' }}>
-          <span onClick={() => setModal('about')}>About</span>
-          <span onClick={() => setModal('privacy')}>Privacy</span>
-          <span onClick={() => setModal('contact')}>Contact</span>
-          <span onClick={() => setModal('terms')}>Terms</span>
+          <span onClick={() => setModal('about')}>About</span><span onClick={() => setModal('privacy')}>Privacy</span><span onClick={() => setModal('contact')}>Contact</span><span onClick={() => setModal('terms')}>Terms</span>
         </div>
       </div>
-
-      {/* NO TOP AD HERE - REMOVED AS YOU WANTED */}
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '12px', flexWrap: 'wrap' }}>
         <div className="side-ad">ADVERTISEMENT</div>
 
-        <div className="center-wrap">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px', width: '300px', maxWidth: '92vw' }}><span>Score: {Math.floor(score)}</span><span>Best: {best}</span></div>
 
-          <div ref={gameRef} className="game-box" style={{ position: 'relative', width: '300px', height: '480px', background: '#070711', borderRadius: '16px', border: '2px solid #223', overflow: 'hidden', cursor: 'grab' }}>
+          <div ref={gameRef} className="game-box" style={{ position: 'relative', width: '300px', height: '480px', background: '#070711', borderRadius: '16px', border: '2px solid #223', overflow: 'hidden', touchAction: 'none' }}>
             <div style={{ position: 'absolute', left: '50%', top: 0, width: '2px', height: '100%', background: 'repeating-linear-gradient(to bottom, #fff 0 14px, transparent 14px 28px)', transform: 'translateX(-50%)', opacity: 0.35, zIndex: 1 }} />
             {gameState!== 'start' && enemies.map(en => <Car key={en.id} x={en.x} y={en.y} color={en.color} />)}
-            {gameState!== 'start' && <Car x={playerX} y={85} color="#00D9FF" isPlayer carRefProp={playerCarRef} />}
-
+            {gameState!== 'start' && <Car x={playerX} y={85} color="#00D9FF" isPlayer />}
             {gameState === 'start' && (
               <div style={{ position: 'absolute', inset: 0, zIndex: 50, background: '#070711', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <h2 style={{ color: '#00E5FF' }}>CAR DODGE</h2>
-                <p style={{ fontSize: '11px', color: '#aaa' }}>Drag to Move!</p>
-                <button onClick={startGame} style={{ marginTop: '12px', padding: '10px 24px', background: '#ffeb3b', border: 'none', borderRadius: '20px', fontWeight: 'bold' }}>PLAY NOW</button>
+                <h2 style={{ color: '#00E5FF' }}>CAR DODGE</h2><button onClick={startGame} style={{ marginTop: '12px', padding: '10px 24px', background: '#ffeb3b', border: 'none', borderRadius: '20px', fontWeight: 'bold' }}>PLAY NOW</button>
               </div>
             )}
             {gameState === 'over' && (
               <div style={{ position: 'absolute', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <h2 style={{ margin: 0 }}>GAME OVER</h2><p>Score: {Math.floor(score)}</p>
-                <button onClick={startGame} style={{ padding: '10px 22px', background: 'white', border: 'none', borderRadius: '20px', fontWeight: 'bold' }}>RESTART</button>
+                <h2 style={{ margin: 0 }}>GAME OVER</h2><p>Score: {Math.floor(score)}</p><button onClick={startGame} style={{ padding: '10px 22px', background: 'white', border: 'none', borderRadius: '20px', fontWeight: 'bold' }}>RESTART</button>
               </div>
             )}
           </div>
@@ -184,7 +164,9 @@ export default function App() {
             <button onTouchStart={() => { const nx = Math.min(90, playerXRef.current + 18); playerXRef.current = nx; setPlayerX(nx); }} style={{ padding: '9px 18px', borderRadius: '10px', border: 'none', background: '#ffffff22', color: 'white' }}>RIGHT →</button>
           </div>
 
-          <div className="bottom-ad">ADVERTISEMENT</div>
+          <div className="bottom-ad-wrap">
+            <div className="bottom-ad">ADVERTISEMENT</div>
+          </div>
         </div>
 
         <div className="side-ad">ADVERTISEMENT</div>
@@ -194,13 +176,13 @@ export default function App() {
         <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', marginBottom: '10px', fontSize: '12px', cursor: 'pointer' }}>
           <span onClick={() => setModal('about')}>About</span><span onClick={() => setModal('privacy')}>Privacy</span><span onClick={() => setModal('contact')}>Contact</span><span onClick={() => setModal('terms')}>Terms</span>
         </div>
-        <p style={{ fontSize: '11px', color: '#9ab' }}>© 2026 Funbit Games Studio, Chakan, Pune, Maharashtra, India - 411501</p>
+        <p style={{ fontSize: '11px', color: '#9ab' }}>© 2026 Funbit Games Studio, Chakan, Pune - 411501</p>
       </div>
 
-      {modal === 'about' && <Modal title="About FunBit Games Studio"><p>Welcome to FunBit Games Studio! Based in Chakan, Pune. We make lightweight instant games.</p></Modal>}
-      {modal === 'privacy' && <Modal title="Privacy Policy"><p>We use localStorage for best score only. No personal data collection.</p></Modal>}
-      {modal === 'contact' && <Modal title="Contact Us"><p>funbitgames.studio@gmail.com<br/>Chakan, Pune, Maharashtra - 410501</p></Modal>}
-      {modal === 'terms' && <Modal title="Terms"><p>Game is free, as-is for entertainment. Owned by FunBit Games Studio.</p></Modal>}
+      {modal === 'about' && <Modal title="About"><p>FunBit Games Studio - Chakan, Pune. Lightweight instant games.</p></Modal>}
+      {modal === 'privacy' && <Modal title="Privacy"><p>We use localStorage for best score only.</p></Modal>}
+      {modal === 'contact' && <Modal title="Contact"><p>funbitgames.studio@gmail.com</p></Modal>}
+      {modal === 'terms' && <Modal title="Terms"><p>Free to play, as-is.</p></Modal>}
     </div>
   );
 }
