@@ -55,16 +55,14 @@ export default function App() {
     setPlayerX(x);
   };
 
-  // --- FIXED KEYBOARD - NO INTERVAL BUG ---
+  // KEYBOARD FIXED
   useEffect(() => {
     const onKeyDown = (e) => {
-      // Close modal with Esc
       if (modal) {
         if (e.key === 'Escape') setModal(null);
         return;
       }
       if (gameStateRef.current!== 'playing') return;
-
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         e.preventDefault();
         moveLeft();
@@ -78,8 +76,12 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [modal]);
 
-  // Mouse / Touch drag
+  // DRAG - PAUSE WHEN MODAL OPEN (Fixes X not clickable)
   useEffect(() => {
+    if (modal) {
+      isDraggingRef.current = false;
+      return;
+    }
     const el = gameRef.current;
     if (!el) return;
     const down = (e) => { isDraggingRef.current = true; handleMove(e.touches? e.touches[0].clientX : e.clientX); };
@@ -101,7 +103,7 @@ export default function App() {
     };
   }, [modal]);
 
-  // Game loop - PC SLOW START perfect as you said
+  // GAME LOOP - PC SLOW START
   useEffect(() => {
     if (gameState!== 'playing') return;
     let frame = 0;
@@ -144,12 +146,12 @@ export default function App() {
   );
 
   const Modal = ({ title, children }) => (
-    <div onClick={() => setModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: '#0e2a5a', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: '20px', position: 'relative', border: '1px solid #2a5db0' }}>
-        <button onClick={() => setModal(null)} style={{ position: 'absolute', top: '10px', right: '12px', background: '#ff3b30', border: 'none', color: 'white', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontWeight: 'bold', zIndex: 1000 }}>X</button>
+    <div onClick={() => { setModal(null); setTimeout(()=>window.focus(),50); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
+      <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} style={{ background: '#0e2a5a', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '85vh', overflowY: 'auto', padding: '20px', position: 'relative', border: '1px solid #2a5db0' }}>
+        <button onClick={() => { setModal(null); setTimeout(()=>window.focus(),50); }} style={{ position: 'absolute', top: '10px', right: '12px', background: '#ff3b30', border: 'none', color: 'white', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontWeight: 'bold', zIndex: 10000 }}>X</button>
         <h3 style={{ color: '#00E5FF', marginBottom: '12px' }}>{title}</h3>
         <div style={{ fontSize: '12px', lineHeight: '1.7', color: '#cfe2ff' }}>{children}</div>
-        <button onClick={() => setModal(null)} style={{ marginTop: '15px', padding: '8px 16px', background: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Close</button>
+        <button onClick={() => { setModal(null); setTimeout(()=>window.focus(),50); }} style={{ marginTop: '15px', padding: '8px 16px', background: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Close</button>
       </div>
     </div>
   );
@@ -157,9 +159,9 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: '#0a1e3f', color: 'white', fontFamily: 'Arial', overflowX: 'hidden' }}>
       <style>{`
-      .side-ad{ width:160px; min-height:500px; background:#ffffff18; border:1px dashed #4aa8ff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; }
-      .bottom-ad-wrap{ width:100%; display:flex; justify-content:center; margin-top:12px; }
-      .bottom-ad{ width:300px; height:64px; background:#ffffff15; border:1px dashed #4aa8ff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; }
+     .side-ad{ width:160px; min-height:500px; background:#ffffff18; border:1px dashed #4aa8ff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; }
+     .bottom-ad-wrap{ width:100%; display:flex; justify-content:center; margin-top:12px; }
+     .bottom-ad{ width:300px; height:64px; background:#ffffff15; border:1px dashed #4aa8ff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; }
         @media (max-width: 900px){.side-ad{ display:none!important; }.game-box{ width:92vw!important; max-width:360px!important; height:62vh!important; }.bottom-ad-wrap{ width:92vw!important; max-width:360px!important; margin:12px auto 0 auto; }.bottom-ad{ width:100%!important; } }
       `}</style>
 
