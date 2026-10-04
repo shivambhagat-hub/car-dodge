@@ -122,8 +122,21 @@ export default function App() {
   }, [gameState, score, best]); // REMOVED playerX!
 
   const Car = ({ x, y, color, isPlayer }) => (
-    <div style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%,-50%) translateZ(0)', width: '28px', height: '52px', background: color, borderRadius: '6px', boxShadow: '0 3px 0 rgba(0,0,0,0.3)', zIndex: isPlayer? 10 : 5, willChange: 'transform' }}>
-      <div style={{ position: 'absolute', top: '8px', left: '3px', right: '3px', height: '10px', background: '#111', borderRadius: '2px' }} />
+  <div style={{ 
+    position: 'absolute', 
+    left: `${x}%`, 
+    top: `${y}%`, 
+    transform: 'translate(-50%,-50%) translateZ(0)', 
+    width: '30px', 
+    height: '54px', 
+    background: color, 
+    borderRadius: '6px', 
+    boxShadow: '0 4px 0 rgba(0,0,0,0.4)', 
+    zIndex: isPlayer ? 10 : 5, // <-- car is ABOVE road
+    border: isPlayer ? '1.5px solid #00ffff' : 'none'
+  }}>
+    <div style={{ position: 'absolute', top: '6px', left: '4px', right: '4px', height: '12px', background: '#0a0a0a', borderRadius: '3px', border: '1px solid #333' }} />
+    <div style={{ position: 'absolute', bottom: '6px', left: '4px', right: '4px', height: '6px', background: '#00000066', borderRadius: '2px' }} />
     </div>
   );
 
@@ -164,7 +177,7 @@ export default function App() {
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}><span>Score: {Math.floor(score)}</span><span>Best: {best}</span></div>
           <div ref={gameRef} className="game-box"
             style={{ position: 'relative', width: '300px', height: '480px', background: '#0a0a1a', borderRadius: '16px', border: '2px solid #223', overflow: 'hidden', touchAction: 'none', cursor: 'grab' }}>
-            <div style={{ position: 'absolute', left: '50%', top: 0, width: '2px', height: '100%', background: 'repeating-linear-gradient(to bottom, white 0 12px, transparent 12px 24px)', transform: 'translateX(-50%)', opacity: 0.5 }} />
+            <div style={{ position: 'absolute', left: '50%', top: 0, width: '2px', height: '100%', background: 'repeating-linear-gradient(to bottom, white 0 12px, transparent 12px 24px)', transform: 'translateX(-50%)', opacity: 0.4, zIndex: 1 }} />
             {gameState!== 'start' && enemies.map(en => <Car key={en.id} x={en.x} y={en.y} color={en.color} />)}
             {gameState!== 'start' && <Car x={playerX} y={85} color="#00D9FF" isPlayer />}
             {gameState === 'start' && (
