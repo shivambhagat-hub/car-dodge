@@ -7,85 +7,122 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(() => Number(localStorage.getItem('best') || 0));
   const [gameState, setGameState] = useState('start');
-  const [isDragging, setIsDragging] = useState(false);
   const [modal, setModal] = useState(null);
+
   const gameRef = useRef(null);
   const loopRef = useRef();
+  const playerXRef = useRef(50); // NEW - lag free ref
+  const isDraggingRef = useRef(false);
+
+  useEffect(() => { playerXRef.current = playerX; }, [playerX]);
 
   const startGame = () => {
-    setEnemies([]); setScore(0); setPlayerX(50); setGameState('playing');
+    setEnemies([]); setScore(0); setPlayerX(50); playerXRef.current = 50; setGameState('playing');
   };
 
+  // OPTIMIZED MOVE - updates ref instantly, state throttled
   const handleMove = (clientX) => {
     if (!gameRef.current || gameState!== 'playing') return;
     const rect = gameRef.current.getBoundingClientRect();
     let x = ((clientX - rect.left) / rect.width) * 100;
     x = Math.max(8, Math.min(92, x));
-    setPlayerX(x);
+    playerXRef.current = x; // instant
+    setPlayerX(x); // for render
   };
 
-  const onMouseDown = (e) => { setIsDragging(true); handleMove(e.clientX); };
-  const onMouseUp = () => setIsDragging(false);
-  const onMouseMove = (e) => { if (isDragging) handleMove(e.clientX); };
-  const onTouchMove = (e) => handleMove(e.touches[0].clientX);
+  // MOUSE + TOUCH unified with preventDefault
+  useEffect(() => {
+    const el = gameRef.current;
+    if (!el) return;
+
+    const onPointerDown = (e) => {
+      isDraggingRef.current = true;
+      const cx = e.touches? e.touches[0].clientX : e.clientX;
+      handleMove(cx);
+    };
+    const onPointerMove = (e) => {
+      if (!isDraggingRef.current) return;
+      if (e.cancelable) e.preventDefault();
+      const cx = e.touches? e.touches[0].clientX : e.clientX;
+      handleMove(cx);
+    };
+    const onPointerUp = () => { isDraggingRef.current = false; };
+
+    el.addEventListener('mousedown', onPointerDown);
+    el.addEventListener('touchstart', onPointerDown, { passive: false });
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchend', onPointerUp);
+
+    return () => {
+      el.removeEventListener('mousedown', onPointerDown);
+      el.removeEventListener('touchstart', onPointerDown);
+      window.removeEventListener('mousemove', onPointerMove);
+      window.removeEventListener('touchmove', onPointerMove);
+      window.removeEventListener('mouseup', onPointerUp);
+      window.removeEventListener('touchend', onPointerUp);
+    };
+  }, [gameState]);
 
   useEffect(() => {
     const keyHandler = (e) => {
       if (gameState!== 'playing') return;
-      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setPlayerX(p => Math.max(8, p - 15));
-      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setPlayerX(p => Math.min(92, p + 15));
+      if (e.key === 'ArrowLeft' || e.key === 'a') {
+        const nx = Math.max(8, playerXRef.current - 7);
+        playerXRef.current = nx; setPlayerX(nx);
+      }
+      if (e.key === 'ArrowRight' || e.key === 'd') {
+        const nx = Math.min(92, playerXRef.current + 7);
+        playerXRef.current = nx; setPlayerX(nx);
+      }
     };
     window.addEventListener('keydown', keyHandler);
     return () => window.removeEventListener('keydown', keyHandler);
   }, [gameState]);
 
+  // FIXED LOOP - NO playerX dependency!
   useEffect(() => {
     if (gameState!== 'playing') return;
     let frame = 0;
     const loop = () => {
       frame++;
       setEnemies(prev => {
-        let next = prev.map(en => ({...en, y: en.y + 0.5 + score * 0.0003 })).filter(en => en.y < 115);
+        let next = prev.map(en => ({...en, y: en.y + 0.5 + score * 0.0008 })).filter(en => en.y < 115);
         const canSpawn = next.every(en => en.y > 22);
-        if (canSpawn && Math.random() < 0.02) {
+        if (canSpawn && Math.random() < 0.025) {
           let newX = 15 + Math.random() * 70;
           let attempts = 0;
           let hasCollision = true;
           while (hasCollision && attempts < 10) {
             newX = 15 + Math.random() * 70;
             attempts++;
-            hasCollision = false;
-            for (let k = 0; k < next.length; k++) {
-              const en = next[k];
-              if (en.y < 35 && Math.abs(en.x - newX) < 18) {
-                hasCollision = true;
-                break;
-              }
-            }
+            hasCollision = next.some(en => en.y < 35 && Math.abs(en.x - newX) < 18);
             if (next.length === 0) hasCollision = false;
           }
           if (attempts < 10) {
-            next.push({ id: Date.now()+Math.random(), x: newX, y: -12, color: ['#FF3B30','#FF9500','#FFCC00','#5856D6'][Math.floor(Math.random()*4)] });
+            next.push({ id: Date.now() + Math.random(), x: newX, y: -12, color: ['#FF3B30', '#FF9500', '#FFCC00', '#5856D6'][Math.floor(Math.random() * 4)] });
           }
         }
+        // USE REF FOR COLLISION - no lag
         for (let i = 0; i < next.length; i++) {
           const en = next[i];
-          if (en.y > 75 && en.y < 90 && Math.abs(en.x - playerX) < 10) {
+          if (en.y > 75 && en.y < 90 && Math.abs(en.x - playerXRef.current) < 10) {
             setGameState('over');
             if (score > best) { setBest(score); localStorage.setItem('best', score); }
           }
         }
         return next;
       });
-      if (frame % 10 === 0) setScore(s => s + 1);
+      if (frame % 8 === 0) setScore(s => s + 1);
       loopRef.current = requestAnimationFrame(loop);
     };
     loopRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(loopRef.current);
-  }, [gameState, playerX, score, best]);
+  }, [gameState, score, best]); // REMOVED playerX!
 
   const Car = ({ x, y, color, isPlayer }) => (
-    <div style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%,-50%)', width: '28px', height: '52px', background: color, borderRadius: '6px', boxShadow: '0 3px 0 rgba(0,0,0,0.3)', zIndex: isPlayer?10:5 }}>
+    <div style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%,-50%) translateZ(0)', width: '28px', height: '52px', background: color, borderRadius: '6px', boxShadow: '0 3px 0 rgba(0,0,0,0.3)', zIndex: isPlayer? 10 : 5, willChange: 'transform' }}>
       <div style={{ position: 'absolute', top: '8px', left: '3px', right: '3px', height: '10px', background: '#111', borderRadius: '2px' }} />
     </div>
   );
@@ -102,6 +139,15 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a1e3f', color: 'white', fontFamily: 'Arial' }}>
+      <style>{`
+       .side-ad { width: 160px; min-height: 400px; background: #ffffff18; border: 1px dashed #4aa8ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+        @media (max-width: 900px) {
+         .side-ad { display: none!important; } /* HIDE upper/side ads on mobile */
+         .game-container { width: 100vw!important; }
+         .game-box { width: 95vw!important; max-width: 360px!important; height: 65vh!important; }
+        }
+      `}</style>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 20px', background: '#06102a', fontSize: '12px' }}>
         <b>FUNBIT GAMES</b>
         <div style={{ display: 'flex', gap: '14px', cursor: 'pointer' }}>
@@ -112,19 +158,19 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '20px', flexWrap: 'wrap' }}>
-        <div style={{ width: '160px', minHeight: '400px', background: '#ffffff18', border: '1px dashed #4aa8ff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>ADVERTISEMENT</div>
+      <div className="game-container" style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '12px', flexWrap: 'wrap' }}>
+        <div className="side-ad">ADVERTISEMENT</div>
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}><span>Score: {Math.floor(score)}</span><span>Best: {best}</span></div>
-          <div ref={gameRef} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} onMouseLeave={onMouseUp} onTouchMove={onTouchMove}
-            style={{ position: 'relative', width: '300px', height: '480px', background: '#0a0a1a', borderRadius: '16px', border: '2px solid #223', overflow: 'hidden', touchAction: 'none', cursor: isDragging?'grabbing':'grab' }}>
+          <div ref={gameRef} className="game-box"
+            style={{ position: 'relative', width: '300px', height: '480px', background: '#0a0a1a', borderRadius: '16px', border: '2px solid #223', overflow: 'hidden', touchAction: 'none', cursor: 'grab' }}>
             <div style={{ position: 'absolute', left: '50%', top: 0, width: '2px', height: '100%', background: 'repeating-linear-gradient(to bottom, white 0 12px, transparent 12px 24px)', transform: 'translateX(-50%)', opacity: 0.5 }} />
             {gameState!== 'start' && enemies.map(en => <Car key={en.id} x={en.x} y={en.y} color={en.color} />)}
             {gameState!== 'start' && <Car x={playerX} y={85} color="#00D9FF" isPlayer />}
             {gameState === 'start' && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px' }}>
                 <h2 style={{ color: '#00E5FF' }}>CAR DODGE</h2>
-                <p style={{ fontSize: '12px', color: '#ccc' }}>Dodge the cars! Hold Click & Drag!</p>
+                <p style={{ fontSize: '12px', color: '#ccc' }}>Dodge the cars! Drag to Move!</p>
                 <button onClick={startGame} style={{ marginTop: '15px', padding: '10px 24px', background: '#ffeb3b', border: 'none', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer' }}>PLAY NOW</button>
               </div>
             )}
@@ -136,12 +182,12 @@ export default function App() {
             )}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
-            <button onMouseDown={() => setPlayerX(p => Math.max(8, p - 15))} style={{ padding: '8px 20px', borderRadius: '10px', border: 'none', background: '#ffffff22', color: 'white' }}>← LEFT</button>
-            <button onMouseDown={() => setPlayerX(p => Math.min(92, p + 15))} style={{ padding: '8px 20px', borderRadius: '10px', border: 'none', background: '#ffffff22', color: 'white' }}>RIGHT →</button>
+            <button onTouchStart={() => { const nx = Math.max(8, playerXRef.current - 15); playerXRef.current = nx; setPlayerX(nx); }} style={{ padding: '10px 22px', borderRadius: '12px', border: 'none', background: '#ffffff22', color: 'white' }}>← LEFT</button>
+            <button onTouchStart={() => { const nx = Math.min(92, playerXRef.current + 15); playerXRef.current = nx; setPlayerX(nx); }} style={{ padding: '10px 22px', borderRadius: '12px', border: 'none', background: '#ffffff22', color: 'white' }}>RIGHT →</button>
           </div>
-          <div style={{ marginTop: '10px', width: '300px', height: '60px', background: '#ffffff15', border: '1px dashed #4aa8ff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>ADVERTISEMENT</div>
+          <div style={{ marginTop: '10px', width: '300px', height: '70px', background: '#ffffff15', border: '1px dashed #4aa8ff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>ADVERTISEMENT</div>
         </div>
-        <div style={{ width: '160px', minHeight: '400px', background: '#ffffff18', border: '1px dashed #4aa8ff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px' }}>ADVERTISEMENT</div>
+        <div className="side-ad">ADVERTISEMENT</div>
       </div>
 
       <div style={{ background: '#06102a', padding: '20px', textAlign: 'center' }}>
@@ -184,4 +230,5 @@ export default function App() {
       </Modal>}
     </div>
   );
+}
 }
